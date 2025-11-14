@@ -1,7 +1,7 @@
 const express = require('express')
 const jwt = require('jsonwebtoken')
 const getDb = require('../lib/mongo')
-
+const { ObjectId } = require('mongodb')
 const router = express.Router()
 const JWT_SECRET = process.env.JWT_SECRET || 'change-this-secret'
 
@@ -53,6 +53,70 @@ router.get('/', async (req, res) => {
     // eslint-disable-next-line no-console
     console.error('patients GET error', err)
     return res.status(500).json({ error: 'failed to fetch patients' })
+  }
+})
+
+// update patient (only creator)
+router.put('/:id', async (req, res) => {
+  try {
+    const token = getTokenFromReq(req)
+    if (!token) return res.status(401).json({ error: 'missing token' })
+    let data
+    try { data = jwt.verify(token, JWT_SECRET) } catch (err) { return res.status(401).json({ error: 'invalid token' }) }
+
+    const id = req.params.id
+    const body = req.body || {}
+    const update = {}
+    if (body.name) update.name = body.name
+    if (body.age) update.age = Number(body.age)
+    if (body.icd11) update.icd11 = body.icd11
+    if (body.disease) update.disease = String(body.disease)
+    if (Object.keys(update).length === 0) return res.status(400).json({ error: 'nothing to update' })
+
+    const db = await getDb()
+    if (!db) return res.status(503).json({ error: 'database unavailable' })
+
+    const patients = db.collection('patients')
+    const existing = await patients.findOne({ _id: new ObjectId(id) })
+    if (!existing) return res.status(404).json({ error: 'not found' })
+    const owner = existing.createdBy || null
+    const requester = data.id || data.email || null
+    if (owner && requester && owner !== requester) return res.status(403).json({ error: 'forbidden' })
+
+    await patients.updateOne({ _id: new ObjectId(id) }, { $set: { ...update, updatedAt: new Date() } })
+    const doc = await patients.findOne({ _id: new ObjectId(id) })
+    return res.json({ id: String(doc._id), name: doc.name, age: doc.age, icd11: doc.icd11, disease: doc.disease, createdAt: doc.createdAt, createdBy: doc.createdBy })
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('patients PUT error', err)
+    return res.status(500).json({ error: 'failed to update patient' })
+  }
+})
+
+// delete patient (only creator)
+router.delete('/:id', async (req, res) => {
+  try {
+    const token = getTokenFromReq(req)
+    if (!token) return res.status(401).json({ error: 'missing token' })
+    let data
+    try { data = jwt.verify(token, JWT_SECRET) } catch (err) { return res.status(401).json({ error: 'invalid token' }) }
+
+    const id = req.params.id
+    const db = await getDb()
+    if (!db) return res.status(503).json({ error: 'database unavailable' })
+    const patients = db.collection('patients')
+    const existing = await patients.findOne({ _id: new ObjectId(id) })
+    if (!existing) return res.status(404).json({ error: 'not found' })
+    const owner = existing.createdBy || null
+    const requester = data.id || data.email || null
+    if (owner && requester && owner !== requester) return res.status(403).json({ error: 'forbidden' })
+
+    await patients.deleteOne({ _id: new ObjectId(id) })
+    return res.json({ ok: true })
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('patients DELETE error', err)
+    return res.status(500).json({ error: 'failed to delete patient' })
   }
 })
 

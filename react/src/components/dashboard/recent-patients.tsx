@@ -2,7 +2,9 @@
 import { useEffect, useMemo, useState, useCallback } from "react"
 import { Card } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { ArrowRight, MoreVertical, RefreshCw } from "lucide-react"
+import { MoreVertical, RefreshCw } from "lucide-react"
+import EditPatientModal from "./EditPatientModal"
+import ConfirmDeleteModal from "./ConfirmDeleteModal"
 import { useAuth } from "@/lib/auth"
 
 type Patient = {
@@ -21,6 +23,8 @@ export default function RecentPatients() {
   const { user, authFetch } = useAuth()
   const [patients, setPatients] = useState<Patient[]>([])
   const [loading, setLoading] = useState(false)
+  const [editing, setEditing] = useState<Patient | null>(null)
+  const [deleting, setDeleting] = useState<Patient | null>(null)
 
   // load patients (can be triggered by refresh)
   const loadPatients = useCallback(async (signal?: AbortSignal) => {
@@ -70,14 +74,11 @@ export default function RecentPatients() {
 
   return (
     <Card className="bg-card border-border p-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between">
         <h2 className="text-xl font-bold text-foreground">Recent Patients</h2>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => loadPatients()} disabled={loading} aria-label="Refresh patients">
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </Button>
-          <Button variant="ghost" size="sm" className="text-accent hover:bg-accent/10">
-            View All <ArrowRight className="w-4 h-4 ml-1" />
           </Button>
           
         </div>
@@ -90,35 +91,50 @@ export default function RecentPatients() {
         )}
 
         {myPatients.map((patient) => (
-          <div
-            key={patient.id}
-            className="flex items-center justify-between p-4 rounded-lg border border-border hover:bg-secondary/20 transition-colors"
-          >
-            <div className="flex-1">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
-                  <span className="text-sm font-semibold text-primary">
-                    {patient.name ? patient.name.split(" ")[0][0] : "P"}
-                    {patient.name && patient.name.split(" ")[1] ? patient.name.split(" ")[1][0] : ""}
-                  </span>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-foreground">{patient.name}</p>
-                  <p className="text-xs text-muted-foreground">{patient.disease ? `${patient.disease} ${patient.icd11 ? `(${patient.icd11})` : ''}` : (patient.icd11 || "—")}</p>
-                </div>
+          <div key={patient.id} className="p-0">
+            <div className="flex items-center justify-between sm:hidden p-3 rounded-lg border border-border hover:bg-secondary/20 transition-colors">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground truncate">{patient.name || '—'}</p>
+                <p className="text-xs text-muted-foreground truncate">{patient.disease ? patient.disease : (patient.icd11 || '—')}</p>
+              </div>
+              <div className="flex items-center gap-3 ml-3">
+                <span className="text-xs text-muted-foreground">Age: {patient.age ?? '—'}</span>
+                <Button variant="ghost" size="sm" onClick={() => setEditing(patient)}>
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-xs text-muted-foreground">Age: {patient.age ?? "—"}</p>
-                <p className="text-xs text-muted-foreground">{patient.createdAt ? new Date(patient.createdAt).toLocaleString() : "—"}</p>
+
+            {/* Desktop / larger screens: original full row */}
+            <div className="hidden sm:flex items-center justify-between p-4 rounded-lg border border-border hover:bg-secondary/20 transition-colors">
+              <div className="flex-1">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center">
+                    <span className="text-sm font-semibold text-primary">
+                      {patient.name ? patient.name.split(" ")[0][0] : "P"}
+                      {patient.name && patient.name.split(" ")[1] ? patient.name.split(" ")[1][0] : ""}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-foreground">{patient.name}</p>
+                    <p className="text-xs text-muted-foreground">{patient.disease ? `${patient.disease} ${patient.icd11 ? `(${patient.icd11})` : ''}` : (patient.icd11 || "—")}</p>
+                  </div>
+                </div>
               </div>
-              <Button  variant="ghost" size="sm">
-                <MoreVertical className="w-4 h-4" />
-              </Button>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-xs text-muted-foreground">Age: {patient.age ?? "—"}</p>
+                  <p className="text-xs text-muted-foreground">{patient.createdAt ? new Date(patient.createdAt).toLocaleString() : "—"}</p>
+                </div>
+                <Button variant="ghost" size="sm" onClick={() => setEditing(patient)}>
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </div>
             </div>
           </div>
         ))}
+        <EditPatientModal open={!!editing} onClose={() => setEditing(null)} patient={editing} onSaved={() => { setEditing(null); loadPatients() }} onRequestDelete={(p) => { setEditing(null); setDeleting(p) }} />
+        <ConfirmDeleteModal open={!!deleting} onClose={() => setDeleting(null)} patient={deleting} onDeleted={() => { setDeleting(null); loadPatients() }} />
       </div>
     </Card>
   )
