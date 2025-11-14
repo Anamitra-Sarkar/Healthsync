@@ -113,6 +113,7 @@ export default function EditPatientModal({ open, onClose, patient, onSaved, onRe
   if (!open || !patient) return null
 
   async function handleSave(e?: React.FormEvent) {
+    if(!patient) return
     e?.preventDefault()
     setSaving(true)
     try {
