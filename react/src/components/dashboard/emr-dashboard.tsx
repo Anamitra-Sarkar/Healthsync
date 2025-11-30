@@ -345,8 +345,8 @@ export default function EMRDashboard() {
                           <div className="text-sm font-semibold truncate">{p.name || p.id}</div>
                           <div className="text-xs text-muted-foreground truncate">{
                             // Prefer latest diagnosis -> patient.disease -> placeholder
-                            (latestByPatient[p.id] && (latestByPatient[p.id].disease || latestByPatient[p.id].icd11))
-                              ? `${latestByPatient[p.id].disease ? latestByPatient[p.id].disease : ''}${latestByPatient[p.id].icd11 ? ` (${latestByPatient[p.id].icd11})` : ''}`.trim()
+                            (latestByPatient[p.id] && (latestByPatient[p.id]?.disease || latestByPatient[p.id]?.icd11))
+                              ? `${latestByPatient[p.id]?.disease ? latestByPatient[p.id]?.disease : ''}${latestByPatient[p.id]?.icd11 ? ` (${latestByPatient[p.id]?.icd11})` : ''}`.trim()
                               : (p.hasOwnProperty('disease') && (p as any).disease ? (p as any).disease : '—')
                           }</div>
                         </div>
