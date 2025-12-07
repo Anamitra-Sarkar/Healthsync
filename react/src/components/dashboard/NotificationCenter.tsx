@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 type NotificationData = {
   patientName?: string
   patientAge?: number
+  patientId?: string
 }
 
 export type Notification = {
